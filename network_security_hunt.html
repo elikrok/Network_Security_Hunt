@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Security Scavenger Hunt - Company Bravo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #1a1a2e;
+            overflow-x: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #d32f2f, #c62828);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header p { font-size: 1.1em; opacity: 0.9; }
+        .controls {
+            background: #16213e;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .controls-left {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            background: #0f3460;
+            color: white;
+            border: 2px solid #e94560;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #e94560;
+            transform: translateY(-2px);
+        }
+        .diagram-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 200px);
+            overflow: auto;
+            background: #0f3460;
+            padding: 20px;
+        }
+        .network-diagram {
+            position: relative;
+            width: 1800px;
+            height: 1200px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border: 3px solid #e94560;
+            border-radius: 10px;
+            margin: 0 auto;
+        }
+        .zone {
+            position: absolute;
+            border: 3px dashed;
+            border-radius: 10px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+        }
+        .zone-label {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+            display: inline-block;
+        }
+        .internet { top: 20px; left: 20px; width: 400px; height: 250px; border-color: #3498db; }
+        .internet .zone-label { color: #3498db; }
+        .dmz { top: 20px; left: 450px; width: 450px; height: 250px; border-color: #f39c12; }
+        .dmz .zone-label { color: #f39c12; }
+        .internal { top: 300px; left: 20px; width: 600px; height: 400px; border-color: #2ecc71; }
+        .internal .zone-label { color: #2ecc71; }
+        .wireless { top: 300px; left: 650px; width: 400px; height: 300px; border-color: #9b59b6; }
+        .wireless .zone-label { color: #9b59b6; }
+        .remote { top: 20px; left: 930px; width: 400px; height: 250px; border-color: #e74c3c; }
+        .remote .zone-label { color: #e74c3c; }
+        .security-tools { top: 300px; left: 1080px; width: 400px; height: 300px; border-color: #1abc9c; }
+        .security-tools .zone-label { color: #1abc9c; }
+        .guest { top: 730px; left: 20px; width: 500px; height: 250px; border-color: #e67e22; }
+        .guest .zone-label { color: #e67e22; }
+        .server-room { top: 730px; left: 550px; width: 500px; height: 250px; border-color: #34495e; }
+        .server-room .zone-label { color: #95a5a6; }
+        .device {
+            position: absolute;
+            background: white;
+            border: 2px solid #2c3e50;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 0.85em;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .device:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+        .vulnerability {
+            border-color: #2c3e50;
+            background: white;
+        }
+        .vulnerability.found {
+            border-color: #27ae60;
+            background: #d4edda;
+        }
+        .vulnerability.incorrect {
+            border-color: #e74c3c;
+            background: #ffebee;
+        }
+        .device-icon {
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        .device-label {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 3px;
+            font-size: 0.9em;
+        }
+        .device-details {
+            font-size: 0.75em;
+            color: #555;
+            text-align: center;
+        }
+        .warning-badge {
+            display: none;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .modal-content h2 {
+            color: #d32f2f;
+            margin-bottom: 15px;
+        }
+        .modal-content p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .quiz-options {
+            margin: 20px 0;
+        }
+        .quiz-option {
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .quiz-option:hover {
+            background: #e3f2fd;
+            border-color: #1976d2;
+        }
+        .quiz-option.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        .quiz-option.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        .close-modal {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .close-modal:hover {
+            background: #1565c0;
+        }
+        .score-panel {
+            background: rgba(22, 33, 62, 0.9);
+            border: 2px solid #e94560;
+            border-radius: 8px;
+            padding: 12px 20px;
+            color: white;
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+        .score-panel h3 {
+            color: #e94560;
+            margin: 0;
+            font-size: 1em;
+        }
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .score-item span:first-child {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+        .score-number {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2ecc71;
+        }
+        .score-negative {
+            color: #e74c3c;
+        }
+        .final-grade-modal .modal-content {
+            max-width: 600px;
+            text-align: center;
+        }
+        .grade-display {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 30px;
+            border-radius: 10px;
+        }
+        .grade-a { color: #28a745; background: #d4edda; }
+        .grade-b { color: #17a2b8; background: #d1ecf1; }
+        .grade-c { color: #ffc107; background: #fff3cd; }
+        .grade-d { color: #fd7e14; background: #ffe5d0; }
+        .grade-f { color: #dc3545; background: #f8d7da; }
+        .name-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .submit-screenshot {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .submit-screenshot:hover {
+            background: #218838;
+        }
+        .breakdown {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .breakdown h4 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Where's the Weak Spot?</h1>
+        <p>Company Bravo Network Security Scavenger Hunt</p>
+    </div>
+
+    <div class="controls">
+        <div class="controls-left">
+            <button class="btn" onclick="resetGame()">🔄 Reset Hunt</button>
+            <button class="btn" onclick="showInstructions()">📖 Instructions</button>
+            <button class="btn" onclick="finishAssessment()">✅ Finish & Get Grade</button>
+        </div>
+        
+        <div class="score-panel">
+            <div class="score-item">
+                <span>Found</span>
+                <span id="vulnFound">0/12</span>
+            </div>
+            <div class="score-item">
+                <span>Correct</span>
+                <span id="correctFixes">0</span>
+            </div>
+            <div class="score-item">
+                <span>Earned</span>
+                <span class="score-number" id="pointsEarned">0</span>
+            </div>
+            <div class="score-item">
+                <span>Lost</span>
+                <span class="score-negative" id="pointsLost">0</span>
+            </div>
+            <div class="score-item" style="border-left: 2px solid rgba(255,255,255,0.3); padding-left: 20px;">
+                <span>Total</span>
+                <span class="score-number" id="totalPoints">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="network-diagram">
+            <!-- INTERNET ZONE -->
+            <div class="zone internet">
+                <div class="zone-label">☁️ INTERNET</div>
+                
+                <div class="device" style="top: 60px; left: 20px;" onclick="checkSafeDevice(this, 'Cloud')">
+                    <div class="device-icon">☁️</div>
+                    <div class="device-label">Cloud</div>
+                    <div class="device-details">Public Network</div>
+                </div>
+
+                <div class="device vulnerability" style="top: 140px; left: 200px;" onclick="checkVulnerability(this, 'attacker')">
+                    <div class="device-icon">💻</div>
+                    <div class="device-label">Attacker Laptop</div>
+                    <div class="device-details">Scanning for vulnerabilities</div>
+                </div>
+            </div>
+
+            <!-- DMZ ZONE -->
+            <div class="zone dmz">
+                <div class="zone-label">🛡️ DMZ (Screened Subnet)</div>
+                
+                <div class="device vulnerability" style="top: 60px; left: 30px;" onclick="checkVulnerability(this, 'ftp')">
+                    <div class="device-icon">📂</div>
+                    <div class="device-label">FTP Server</div>
+                    <div class="device-details">Port 21 - FTP Data Transfer</div>
+                </div>
+
+                <div class="device" style="top: 60px; left: 200px;" onclick="checkSafeDevice(this, 'Web Server')">
+                    <div class="device-icon">🌐</div>
+                    <div class="device-label">Web Server</div>
+                    <div class="device-details">Port 443 (HTTPS)</div>
+                </div>
+
+                <div class="device vulnerability" style="top: 150px; left: 120px;" onclick="checkVulnerability(this, 'nofirewall')">
+                    <div class="device-icon">🔌</div>
+                    <div class="device-label">Direct Connection</div>
+                    <div class="device-details">DMZ → Internal LAN</div>
+                </div>
+            </div>
+
+            <!-- INTERNAL LAN ZONE -->
+            <div class="zone internal">
+                <div class="zone-label">🏢 INTERNAL LAN</div>
+                
+                <div class="device vulnerability" style="top: 60px; left: 30px;" onclick="checkVulnerability(this, 'telnet')">
+                    <div class="device-icon">🖥️</div>
+                    <div class="device-label">Core Router</div>
+                    <div class="device-details">Telnet Port 23 OPEN</div>
+                </div>
+
+                <div class="device vulnerability" style="top: 60px; left: 220px;" onclick="checkVulnerability(this, 'vlan')">
+                    <div class="device-icon">🔀</div>
+                    <div class="device-label">Main Switch</div>
+                    <div class="device-details">All devices - One VLAN</div>
+                </div>
+
+                <div class="device" style="top: 180px; left: 30px;" onclick="checkSafeDevice(this, 'Employee PC 1')">
+                    <div class="device-icon">💻</div>
+                    <div class="device-label">Employee PC 1</div>
+                    <div class="device-details">Windows 10</div>
+                </div>
+
+                <div class="device" style="top: 180px; left: 180px;" onclick="checkSafeDevice(this, 'Employee PC 2')">
+                    <div class="device-icon">💻</div>
+                    <div class="device-label">Employee PC 2</div>
+                    <div class="device-details">Windows 11</div>
+                </div>
+
+                <div class="device" style="top: 180px; left: 330px;" onclick="checkSafeDevice(this, 'Network Printer')">
+                    <div class="device-icon">🖨️</div>
+                    <div class="device-label">Printer</div>
+                    <div class="device-details">Network Printer</div>
+                </div>
+
+                <div class="device vulnerability" style="top: 280px; left: 150px;" onclick="checkVulnerability(this, 'iot')">
+                    <div class="device-icon">❄️</div>
+                    <div class="device-label">Smart Fridge</div>
+                    <div class="device-details">IoT Device - Internal Network</div>
+                </div>
+            </div>
+
+            <!-- WIRELESS ZONE -->
+            <div class="zone wireless">
+                <div class="zone-label">📡 WIRELESS NETWORK</div>
+                
+                <div class="device vulnerability" style="top: 60px; left: 30px;" onclick="checkVulnerability(this, 'wps')">
+                    <div class="device-icon">📡</div>
+                    <div class="device-label">Wireless AP</div>
+                    <div class="device-details">🔘 Press to Connect (WPS)</div>
+                </div>
+
+                <div class="device vulnerability" style="top: 60px; left: 220px;" onclick="checkVulnerability(this, 'password')">
+                    <div class="device-icon">📝</div>
+                    <div class="device-label">Post-it Note</div>
+                    <div class="device-details">Wi-Fi: Bravo123</div>
+                </div>
+
+                <div class="device" style="top: 170px; left: 120px;" onclick="checkSafeDevice(this, 'Mobile Device')">
+                    <div class="device-icon">📱</div>
+                    <div class="device-label">Mobile Device</div>
+                    <div class="device-details">Connected to Wi-Fi</div>
+                </div>
+            </div>
+
+            <!-- REMOTE ACCESS ZONE -->
+            <div class="zone remote">
+                <div class="zone-label">🌍 REMOTE ACCESS</div>
+                
+                <div class="device vulnerability" style="top: 60px; left: 30px;" onclick="checkVulnerability(this, 'rdp')">
+                    <div class="device-icon">🖥️</div>
+                    <div class="device-label">RDP Gateway</div>
+                    <div class="device-details">Port 3389 → Internet</div>
+                </div>
+
+                <div class="device vulnerability" style="top: 150px; left: 200px;" onclick="checkVulnerability(this, 'novpn')">
+                    <div class="device-icon">☕</div>
+                    <div class="device-label">Coffee Shop User</div>
+                    <div class="device-details">Open Wi-Fi - No VPN</div>
+                </div>
+            </div>
+
+            <!-- SECURITY TOOLS ZONE -->
+            <div class="zone security-tools">
+                <div class="zone-label">🔒 SECURITY TOOLS</div>
+                
+                <div class="device" style="top: 60px; left: 30px;" onclick="checkSafeDevice(this, 'Firewall')">
+                    <div class="device-icon">🔥</div>
+                    <div class="device-label">Firewall</div>
+                    <div class="device-details">Stateful Inspection</div>
+                </div>
+
+                <div class="device vulnerability" style="top: 60px; left: 220px;" onclick="checkVulnerability(this, 'ids')">
+                    <div class="device-icon">🚨</div>
+                    <div class="device-label">IDS Console</div>
+                    <div class="device-details">Last Update: 2022</div>
+                </div>
+
+                <div class="device vulnerability" style="top: 170px; left: 120px;" onclick="checkVulnerability(this, 'honeypot')">
+                    <div class="device-icon">🍯</div>
+                    <div class="device-label">Honeypot</div>
+                    <div class="device-details">Located in Internal LAN</div>
+                </div>
+            </div>
+
+            <!-- GUEST ZONE -->
+            <div class="zone guest">
+                <div class="zone-label">👥 GUEST / BREAK ROOM</div>
+                
+                <div class="device vulnerability" style="top: 60px; left: 30px;" onclick="checkVulnerability(this, 'rogue')">
+                    <div class="device-icon">💀</div>
+                    <div class="device-label">FreeCompanyWiFi</div>
+                    <div class="device-details">Unauthorized AP</div>
+                </div>
+
+                <div class="device" style="top: 150px; left: 200px;" onclick="checkSafeDevice(this, 'Guest Laptop')">
+                    <div class="device-icon">💻</div>
+                    <div class="device-label">Guest Laptop</div>
+                    <div class="device-details">Visitor Device</div>
+                </div>
+            </div>
+
+            <!-- SERVER ROOM ZONE -->
+            <div class="zone server-room">
+                <div class="zone-label">🗄️ SERVER ROOM</div>
+                
+                <div class="device" style="top: 60px; left: 30px;" onclick="checkSafeDevice(this, 'Database Server')">
+                    <div class="device-icon">🗄️</div>
+                    <div class="device-label">Database Server</div>
+                    <div class="device-details">SQL Server</div>
+                </div>
+
+                <div class="device" style="top: 150px; left: 200px;" onclick="checkSafeDevice(this, 'Mail Server')">
+                    <div class="device-icon">📧</div>
+                    <div class="device-label">Mail Server</div>
+                    <div class="device-details">Exchange Server</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content" id="modalContent">
+            <h2 id="modal-title"></h2>
+            <p id="modal-description"></p>
+            <div id="quiz-section"></div>
+            <button class="close-modal" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <div class="modal final-grade-modal" id="gradeModal">
+        <div class="modal-content">
+            <h2>🎯 Assessment Complete!</h2>
+            <div id="gradeDisplay"></div>
+            <div class="breakdown" id="scoreBreakdown"></div>
+            <input type="text" class="name-input" id="studentName" placeholder="Enter your full name">
+            <p style="color: #666; margin: 10px 0;">Take a screenshot of this result and submit it to your instructor</p>
+            <button class="submit-screenshot" onclick="prepareScreenshot()">📸 Ready for Screenshot</button>
+        </div>
+    </div>
+
+    <script>
+        const POINTS_PER_VULNERABILITY = 5;
+        const POINTS_PER_CORRECT_FIX = 5;
+        const POINTS_LOST_WRONG_CLICK = 2;
+        const POINTS_LOST_WRONG_FIX = 3;
+        const TOTAL_POSSIBLE_POINTS = 120; // 12 vulns * (5 + 5)
+
+        let foundVulnerabilities = new Set();
+        let correctFixes = 0;
+        let pointsEarned = 0;
+        let pointsLost = 0;
+        let currentVulnKey = null;
+        let currentElement = null;
+
+        const safeDevices = {
+            'Cloud': {
+                deviceName: 'Cloud / Public Internet',
+                detailedDescription: 'This represents the public Internet cloud. It is the connection point between external networks and your organization. Traffic from the Internet passes through this connection point before reaching security controls.',
+                isSafe: true,
+                whySafe: 'The cloud itself is not a vulnerability - it is simply the representation of the public Internet connection. Security is enforced through firewalls, IDS/IPS, and other controls placed between the Internet and internal resources.'
+            },
+            'Web Server': {
+                deviceName: 'Web Server (HTTPS)',
+                detailedDescription: 'This web server is running HTTPS on port 443, which uses TLS encryption to secure all communications. It is located in the DMZ (screened subnet) to provide public access while being separated from the internal network.',
+                isSafe: true,
+                whySafe: 'This server is properly configured with HTTPS (port 443), which encrypts all traffic using TLS. It is correctly placed in the DMZ for appropriate security zoning.'
+            },
+            'Employee PC 1': {
+                deviceName: 'Employee Workstation (Windows 10)',
+                detailedDescription: 'This is a standard employee workstation running Windows 10. It is connected to the internal LAN and used for daily business operations. The workstation appears to be running current software.',
+                isSafe: true,
+                whySafe: 'This workstation is properly located in the internal LAN and appears to be running supported software (Windows 10). Without additional information showing insecure configurations, this is a standard secured endpoint.'
+            },
+            'Employee PC 2': {
+                deviceName: 'Employee Workstation (Windows 11)',
+                detailedDescription: 'This is an employee workstation running Windows 11, the latest version of Microsoft Windows. It is connected to the internal network for business use.',
+                isSafe: true,
+                whySafe: 'Windows 11 is the current operating system with active security support. This workstation is properly placed in the internal network with no visible security issues.'
+            },
+            'Network Printer': {
+                deviceName: 'Network Printer',
+                detailedDescription: 'This is a shared network printer connected to the internal LAN. It allows employees to print documents from their workstations.',
+                isSafe: true,
+                whySafe: 'While printers can be security risks if not properly managed, this printer is on the internal network and shows no obvious vulnerabilities. In a real assessment, you would verify it has updated firmware and secure configurations.'
+            },
+            'Mobile Device': {
+                deviceName: 'Mobile Device',
+                detailedDescription: 'This mobile device is connected to the company wireless network. It appears to be properly authenticated to the wireless access point.',
+                isSafe: true,
+                whySafe: 'The mobile device is connected to the wireless network and shows no immediate security concerns. Proper mobile device management would be implemented through policies and MDM solutions.'
+            },
+            'Firewall': {
+                deviceName: 'Stateful Firewall',
+                detailedDescription: 'This is a stateful firewall that tracks connection states and only allows traffic that is part of established, legitimate connections. It uses a three-way TCP handshake validation and maintains a state table of all connections.',
+                isSafe: true,
+                whySafe: 'Stateful firewalls are a security control, not a vulnerability. They provide Layer 4 protection by tracking connection states and blocking unauthorized traffic. This is properly configured security infrastructure.'
+            },
+            'Guest Laptop': {
+                deviceName: 'Guest Laptop',
+                detailedDescription: 'This is a visitor\'s laptop connected to the guest network. It is segregated from the internal corporate network to prevent unauthorized access to company resources.',
+                isSafe: true,
+                whySafe: 'Guest devices are properly isolated on a separate guest network, which is a security best practice. This prevents visitors from accessing internal corporate resources.'
+            },
+            'Database Server': {
+                deviceName: 'Database Server (SQL)',
+                detailedDescription: 'This is the company\'s SQL database server located in the secure server room. It stores critical business data and is accessed by authorized internal applications and users.',
+                isSafe: true,
+                whySafe: 'The database server is properly located in a dedicated server room zone, separated from general user networks. Without evidence of exposed ports or misconfigurations, this represents proper infrastructure placement.'
+            },
+            'Mail Server': {
+                deviceName: 'Mail Server (Exchange)',
+                detailedDescription: 'This Microsoft Exchange server handles email for the organization. It is located in the server room and provides email services to internal users.',
+                isSafe: true,
+                whySafe: 'The mail server is appropriately placed in the server room infrastructure zone. Exchange servers are legitimate business infrastructure when properly configured and updated.'
+            }
+        };
+
+        const vulnerabilities = {
+            attacker: {
+                deviceName: 'Suspicious Laptop',
+                detailedDescription: 'This laptop is shown scanning the network for vulnerabilities. It appears to be performing reconnaissance activities, attempting to identify open ports, services, and potential weaknesses in the network infrastructure.',
+                isSafe: false,
+                title: "Threat Identified: Attacker Scanning Network",
+                description: "An external attacker's laptop is actively scanning for vulnerabilities. While this represents an external threat rather than an internal vulnerability, recognizing attack patterns is important for threat awareness.",
+                isBonus: true,
+                options: [
+                    { text: "Deploy IDS/IPS to detect and block scanning attempts", correct: true },
+                    { text: "Allow the scanning to continue to gather intelligence", correct: false },
+                    { text: "Disable all firewall rules temporarily", correct: false },
+                    { text: "Send the attacker a warning email", correct: false }
+                ]
+            },
+            telnet: {
+                deviceName: 'Core Router',
+                detailedDescription: 'This router is the core networking device that handles traffic routing for the entire internal network. The configuration shows that Telnet (port 23) is currently enabled and accepting administrative connections.',
+                isSafe: false,
+                title: "Insecure Remote Access - Telnet",
+                description: "The core router is using Telnet (port 23) for administrative access. Telnet transmits all data, including passwords, in cleartext.",
+                options: [
+                    { text: "Replace Telnet with SSH (port 22) which encrypts all communications", correct: true },
+                    { text: "Keep Telnet but add a firewall rule", correct: false },
+                    { text: "Switch to HTTP for router management", correct: false },
+                    { text: "Use FTP instead of Telnet", correct: false }
+                ]
+            },
+            ftp: {
+                deviceName: 'FTP Server',
+                detailedDescription: 'This file transfer server is operating on port 21, running the standard FTP (File Transfer Protocol). It is being used to transfer files between systems, and shows active data transfers occurring.',
+                isSafe: false,
+                title: "Cleartext File Transfer - FTP",
+                description: "The FTP server transmits files and credentials in cleartext (port 21). Anyone on the network can intercept sensitive data.",
+                options: [
+                    { text: "Replace FTP with SFTP (port 22) or FTPS for encrypted transfers", correct: true },
+                    { text: "Move the FTP server to a different port", correct: false },
+                    { text: "Add a password to the FTP server", correct: false },
+                    { text: "Use Telnet for file transfers instead", correct: false }
+                ]
+            },
+            vlan: {
+                deviceName: 'Main Network Switch',
+                detailedDescription: 'This is the primary switch that connects all internal devices. The configuration shows all devices - servers, workstations, printers, and IoT devices - are on a single VLAN with no network segmentation.',
+                isSafe: false,
+                title: "No Network Segmentation - Flat Network",
+                description: "All devices connect to one switch without VLAN segmentation. A compromised device can access everything on the network.",
+                options: [
+                    { text: "Implement VLANs to segment by function: servers, employees, guests, IoT", correct: true },
+                    { text: "Add more switches to the network", correct: false },
+                    { text: "Install antivirus on all devices", correct: false },
+                    { text: "Increase bandwidth on the main switch", correct: false }
+                ]
+            },
+            wps: {
+                deviceName: 'Wireless Access Point',
+                detailedDescription: 'This wireless access point provides Wi-Fi connectivity to the building. It has a physical "Press to Connect" button visible, indicating that WPS (Wi-Fi Protected Setup) is enabled for easy device pairing.',
+                isSafe: false,
+                title: "WPS Enabled on Wireless AP",
+                description: "Wi-Fi Protected Setup (WPS) is enabled with a 'Press to Connect' button. WPS uses an 8-digit PIN that can be brute-forced in hours.",
+                options: [
+                    { text: "Disable WPS and enable WPA3 with 802.1X/RADIUS authentication", correct: true },
+                    { text: "Change the WPS PIN to a longer number", correct: false },
+                    { text: "Move the access point to a different location", correct: false },
+                    { text: "Enable WEP encryption instead", correct: false }
+                ]
+            },
+            password: {
+                deviceName: 'Post-it Note with Wi-Fi Password',
+                detailedDescription: 'There is a yellow post-it note stuck to a monitor displaying the Wi-Fi network password "Bravo123" in plain text. This password is shared among all users for wireless network access.',
+                isSafe: false,
+                title: "Wi-Fi Password on Post-it Note",
+                description: "The Wi-Fi password 'Bravo123' is written on a visible post-it note. Shared passwords provide no accountability.",
+                options: [
+                    { text: "Implement 802.1X with RADIUS for per-user authentication", correct: true },
+                    { text: "Change the password to a longer one", correct: false },
+                    { text: "Write the password in smaller letters", correct: false },
+                    { text: "Email the password to employees instead", correct: false }
+                ]
+            },
+            nofirewall: {
+                deviceName: 'Direct Network Connection',
+                detailedDescription: 'This network cable shows a direct physical connection between the DMZ (where public-facing servers are located) and the internal LAN (where internal resources reside). There is no firewall or security device between these two security zones.',
+                isSafe: false,
+                title: "No Firewall Between DMZ and Internal Network",
+                description: "There's a direct connection from DMZ to internal LAN without a firewall. If the DMZ is compromised, attackers reach internal resources.",
+                options: [
+                    { text: "Install Firewall 2 between DMZ and internal LAN with strict ACL rules", correct: true },
+                    { text: "Add antivirus to the DMZ servers", correct: false },
+                    { text: "Move all servers to the internal LAN", correct: false },
+                    { text: "Increase the cable length between zones", correct: false }
+                ]
+            },
+            rdp: {
+                deviceName: 'RDP Gateway',
+                detailedDescription: 'This Remote Desktop Protocol gateway allows external connections directly from the Internet on port 3389. Anyone on the Internet can attempt to connect to this service and try to authenticate.',
+                isSafe: false,
+                title: "RDP Exposed to Internet",
+                description: "Remote Desktop Protocol (port 3389) is exposed directly to the Internet. RDP is a frequent target for brute-force attacks.",
+                options: [
+                    { text: "Remove RDP from Internet, require VPN first, implement MFA", correct: true },
+                    { text: "Change RDP to a different port number", correct: false },
+                    { text: "Add a stronger password to RDP", correct: false },
+                    { text: "Allow RDP only during business hours", correct: false }
+                ]
+            },
+            ids: {
+                deviceName: 'IDS Management Console',
+                detailedDescription: 'This is the Intrusion Detection System console that monitors network traffic for suspicious activity. The system status screen shows "Last Update: 2022" for the signature database.',
+                isSafe: false,
+                title: "Outdated IDS Signatures",
+                description: "The IDS signature database hasn't been updated since 2022. It cannot detect recent threats or zero-day exploits.",
+                options: [
+                    { text: "Configure automatic daily/weekly signature updates from vendor", correct: true },
+                    { text: "Replace the IDS with a firewall", correct: false },
+                    { text: "Manually update signatures once per year", correct: false },
+                    { text: "Disable the IDS completely", correct: false }
+                ]
+            },
+            iot: {
+                deviceName: 'Smart Refrigerator',
+                detailedDescription: 'This is an IoT-enabled smart refrigerator with network connectivity. It is connected directly to the internal corporate LAN alongside workstations, servers, and other business systems.',
+                isSafe: false,
+                title: "IoT Device on Internal Network",
+                description: "A smart fridge is connected directly to the internal network. IoT devices often have security vulnerabilities.",
+                options: [
+                    { text: "Create isolated IoT VLAN with restricted access to internal resources", correct: true },
+                    { text: "Disconnect the smart fridge from the network", correct: false },
+                    { text: "Install antivirus on the smart fridge", correct: false },
+                    { text: "Give the fridge a static IP address", correct: false }
+                ]
+            },
+            novpn: {
+                deviceName: 'Remote Worker at Coffee Shop',
+                detailedDescription: 'This employee is working remotely from a coffee shop, connected to the public Wi-Fi network. They are accessing company resources directly over the open wireless network without using a VPN connection.',
+                isSafe: false,
+                title: "Remote Access Without VPN",
+                description: "A remote user at a coffee shop accesses company resources over open Wi-Fi without VPN. All traffic is visible to attackers.",
+                options: [
+                    { text: "Require VPN (IPsec or SSL/TLS) for all remote access before accessing resources", correct: true },
+                    { text: "Ask users to only use secure coffee shops", correct: false },
+                    { text: "Install antivirus on the laptop", correct: false },
+                    { text: "Tell users to work faster to minimize exposure", correct: false }
+                ]
+            },
+            rogue: {
+                deviceName: 'Unauthorized Wireless Access Point',
+                detailedDescription: 'This wireless access point is broadcasting the SSID "FreeCompanyWiFi" with a skull icon. It was not installed by IT and does not appear in the authorized network device inventory.',
+                isSafe: false,
+                title: "Rogue Access Point - Evil Twin",
+                description: "An unauthorized AP named 'FreeCompanyWiFi' with a skull icon is present. This is likely an evil twin attack to capture credentials.",
+                options: [
+                    { text: "Conduct wireless site surveys regularly and use wireless IDS to detect rogue APs", correct: true },
+                    { text: "Connect to it to see what it does", correct: false },
+                    { text: "Change the company Wi-Fi name to match it", correct: false },
+                    { text: "Ignore it since it has a different name", correct: false }
+                ]
+            },
+            honeypot: {
+                deviceName: 'Honeypot Server',
+                detailedDescription: 'This is a honeypot system designed to attract attackers and study their methods. However, it is currently located within the internal LAN, positioned right next to the production database server.',
+                isSafe: false,
+                title: "Honeypot in Wrong Location",
+                description: "The honeypot is in the internal LAN next to the database. Honeypots should be isolated to prevent them from becoming attack pivot points.",
+                options: [
+                    { text: "Move honeypot to isolated network segment or DMZ, monitor closely", correct: true },
+                    { text: "Add more honeypots throughout the internal network", correct: false },
+                    { text: "Remove the honeypot completely", correct: false },
+                    { text: "Connect the honeypot directly to the Internet", correct: false }
+                ]
+            }
+        };
+
+        function checkVulnerability(element, vulnKey) {
+            if (foundVulnerabilities.has(vulnKey)) {
+                alert('You already analyzed this device!');
+                return;
+            }
+
+            currentVulnKey = vulnKey;
+            currentElement = element;
+            const vuln = vulnerabilities[vulnKey];
+
+            document.getElementById('modal-title').textContent = '🔍 Analyzing: ' + vuln.deviceName;
+            document.getElementById('modal-description').textContent = vuln.detailedDescription;
+
+            const quizSection = document.getElementById('quiz-section');
+            quizSection.innerHTML = `
+                <h3 style="margin-top: 20px; color: #d32f2f;">Is this a security vulnerability?</h3>
+                <div class="quiz-option" id="vuln-yes">✅ Yes, this is a vulnerability</div>
+                <div class="quiz-option" id="vuln-no">❌ No, this is properly secured</div>
+            `;
+
+            // Add click handlers
+            document.getElementById('vuln-yes').onclick = () => answerVulnerabilityQuestion(true);
+            document.getElementById('vuln-no').onclick = () => answerVulnerabilityQuestion(false);
+
+            document.getElementById('modal').classList.add('active');
+        }
+
+        window.answerVulnerabilityQuestion = function(userSaysVulnerable) {
+            // Determine if this is a vulnerability or safe device
+            const vuln = vulnerabilities[currentVulnKey];
+            const safeDevice = safeDevices[currentVulnKey];
+            
+            const deviceInfo = vuln || safeDevice;
+            const isActuallyVulnerable = vuln ? !vuln.isSafe : false;
+
+            // Disable the vulnerability question options
+            document.querySelectorAll('.quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
+
+            if (userSaysVulnerable === isActuallyVulnerable) {
+                // Correct identification
+                if (isActuallyVulnerable) {
+                    // Correctly identified as vulnerability
+                    foundVulnerabilities.add(currentVulnKey);
+                    pointsEarned += POINTS_PER_VULNERABILITY;
+                    updateScoreDisplay();
+
+                    // Highlight the correct answer
+                    document.querySelectorAll('.quiz-option')[0].classList.add('correct');
+                    document.querySelectorAll('.quiz-option')[0].textContent += ' - Correct!';
+
+                    // Now show the fix options
+                    setTimeout(() => {
+                        document.getElementById('modal-title').textContent = '🔍 ' + vuln.title;
+                        document.getElementById('modal-description').textContent = vuln.description;
+
+                        const quizSection = document.getElementById('quiz-section');
+                        quizSection.innerHTML = '<h3 style="margin-top: 20px; color: #1976d2;">How should this be fixed?</h3>';
+
+                        // Randomize the order of options
+                        const shuffledOptions = [...vuln.options]
+                            .map((option, index) => ({ option, index, sort: Math.random() }))
+                            .sort((a, b) => a.sort - b.sort)
+                            .map(item => item.option);
+
+                        shuffledOptions.forEach((option, displayIndex) => {
+                            const optionDiv = document.createElement('div');
+                            optionDiv.className = 'quiz-option';
+                            optionDiv.textContent = option.text;
+                            optionDiv.onclick = () => selectAnswer(displayIndex, option.correct, shuffledOptions);
+                            quizSection.appendChild(optionDiv);
+                        });
+                    }, 1500);
+                } else {
+                    // Correctly identified as safe
+                    document.querySelectorAll('.quiz-option')[1].classList.add('correct');
+                    document.querySelectorAll('.quiz-option')[1].textContent += ' - Correct!';
+                    currentElement.classList.add('found');
+                    
+                    const quizSection = document.getElementById('quiz-section');
+                    quizSection.innerHTML += `<p style="margin-top: 15px; padding: 15px; background: #d4edda; border-radius: 8px; color: #155724;"><strong>Excellent!</strong> ${deviceInfo.whySafe}</p>`;
+                }
+            } else {
+                // Incorrect identification
+                pointsLost += POINTS_LOST_WRONG_CLICK;
+                updateScoreDisplay();
+
+                if (userSaysVulnerable) {
+                    // Incorrectly thought it was vulnerable
+                    document.querySelectorAll('.quiz-option')[0].classList.add('incorrect');
+                    document.querySelectorAll('.quiz-option')[0].textContent += ' - Incorrect';
+                    document.querySelectorAll('.quiz-option')[1].classList.add('correct');
+                    document.querySelectorAll('.quiz-option')[1].textContent += ' - This was correct';
+                    
+                    const quizSection = document.getElementById('quiz-section');
+                    quizSection.innerHTML += `<p style="margin-top: 15px; padding: 15px; background: #f8d7da; border-radius: 8px; color: #721c24;"><strong>Incorrect.</strong> ${deviceInfo.whySafe}</p>`;
+                } else {
+                    // Incorrectly thought it was safe
+                    document.querySelectorAll('.quiz-option')[1].classList.add('incorrect');
+                    document.querySelectorAll('.quiz-option')[1].textContent += ' - Incorrect';
+                    document.querySelectorAll('.quiz-option')[0].classList.add('correct');
+                    document.querySelectorAll('.quiz-option')[0].textContent += ' - This was correct';
+                    
+                    foundVulnerabilities.add(currentVulnKey);
+                    currentElement.classList.add('incorrect');
+                    
+                    const quizSection = document.getElementById('quiz-section');
+                    quizSection.innerHTML += `<p style="margin-top: 15px; padding: 15px; background: #f8d7da; border-radius: 8px; color: #721c24;"><strong>Incorrect.</strong> This IS a vulnerability. ${deviceInfo.description}</p>`;
+                }
+            }
+        }
+
+        function selectAnswer(selectedIndex, isCorrect, shuffledOptions) {
+            const options = document.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.style.pointerEvents = 'none');
+
+            if (isCorrect) {
+                options[selectedIndex].classList.add('correct');
+                options[selectedIndex].textContent += ' ✅ Correct!';
+                currentElement.classList.add('found');
+                correctFixes++;
+                pointsEarned += POINTS_PER_CORRECT_FIX;
+            } else {
+                options[selectedIndex].classList.add('incorrect');
+                options[selectedIndex].textContent += ' ❌ Incorrect';
+                currentElement.classList.add('incorrect');
+                pointsLost += POINTS_LOST_WRONG_FIX;
+                
+                // Show correct answer
+                options.forEach((opt, i) => {
+                    if (shuffledOptions[i].correct) {
+                        opt.classList.add('correct');
+                        opt.textContent += ' ✅ This was correct';
+                    }
+                });
+            }
+
+            updateScoreDisplay();
+        }
+
+        function checkSafeDevice(element, deviceName) {
+            if (foundVulnerabilities.has(deviceName)) {
+                alert('You already analyzed this device!');
+                return;
+            }
+
+            currentVulnKey = deviceName;
+            currentElement = element;
+            const device = safeDevices[deviceName];
+
+            document.getElementById('modal-title').textContent = '🔍 Analyzing: ' + device.deviceName;
+            document.getElementById('modal-description').textContent = device.detailedDescription;
+
+            const quizSection = document.getElementById('quiz-section');
+            quizSection.innerHTML = `
+                <h3 style="margin-top: 20px; color: #d32f2f;">Is this a security vulnerability?</h3>
+                <div class="quiz-option" id="safe-yes">✅ Yes, this is a vulnerability</div>
+                <div class="quiz-option" id="safe-no">❌ No, this is properly secured</div>
+            `;
+
+            // Add click handlers
+            document.getElementById('safe-yes').onclick = () => answerVulnerabilityQuestion(true);
+            document.getElementById('safe-no').onclick = () => answerVulnerabilityQuestion(false);
+
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('vulnFound').textContent = `${foundVulnerabilities.size}/12`;
+            document.getElementById('correctFixes').textContent = correctFixes;
+            document.getElementById('pointsEarned').textContent = pointsEarned;
+            document.getElementById('pointsLost').textContent = pointsLost;
+            document.getElementById('totalPoints').textContent = pointsEarned - pointsLost;
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            currentVulnKey = null;
+            currentElement = null;
+        }
+
+        function finishAssessment() {
+            const totalPoints = pointsEarned - pointsLost;
+            const percentage = Math.round((totalPoints / TOTAL_POSSIBLE_POINTS) * 100);
+            
+            let grade, gradeClass;
+            if (percentage >= 90) { grade = 'A'; gradeClass = 'grade-a'; }
+            else if (percentage >= 80) { grade = 'B'; gradeClass = 'grade-b'; }
+            else if (percentage >= 70) { grade = 'C'; gradeClass = 'grade-c'; }
+            else if (percentage >= 60) { grade = 'D'; gradeClass = 'grade-d'; }
+            else { grade = 'F'; gradeClass = 'grade-f'; }
+
+            document.getElementById('gradeDisplay').innerHTML = `
+                <div class="grade-display ${gradeClass}">
+                    ${percentage}%<br>Grade: ${grade}
+                </div>
+            `;
+
+            document.getElementById('scoreBreakdown').innerHTML = `
+                <h4>Score Breakdown:</h4>
+                <p><strong>Vulnerabilities Found:</strong> ${foundVulnerabilities.size}/12 × ${POINTS_PER_VULNERABILITY} pts = ${foundVulnerabilities.size * POINTS_PER_VULNERABILITY} pts</p>
+                <p><strong>Correct Fixes:</strong> ${correctFixes} × ${POINTS_PER_CORRECT_FIX} pts = ${correctFixes * POINTS_PER_CORRECT_FIX} pts</p>
+                <p><strong>Points Earned:</strong> ${pointsEarned} pts</p>
+                <p style="color: #dc3545;"><strong>Points Lost:</strong> -${pointsLost} pts</p>
+                <hr>
+                <p style="font-size: 1.2em;"><strong>Final Score:</strong> ${totalPoints}/${TOTAL_POSSIBLE_POINTS} pts</p>
+            `;
+
+            document.getElementById('gradeModal').classList.add('active');
+        }
+
+        function prepareScreenshot() {
+            const name = document.getElementById('studentName').value.trim();
+            if (!name) {
+                alert('Please enter your full name before taking a screenshot!');
+                return;
+            }
+
+            alert(`Screenshot ready!\n\nName: ${name}\nGrade: ${document.querySelector('.grade-display').textContent}\n\nTake a screenshot now and submit it to your instructor.`);
+        }
+
+        function resetGame() {
+            if (confirm('Reset the entire assessment? All progress will be lost.')) {
+                foundVulnerabilities.clear();
+                correctFixes = 0;
+                pointsEarned = 0;
+                pointsLost = 0;
+                document.querySelectorAll('.vulnerability').forEach(el => {
+                    el.classList.remove('found', 'incorrect');
+                });
+                updateScoreDisplay();
+            }
+        }
+
+        function showInstructions() {
+            alert('🎯 INSTRUCTIONS\n\n' +
+                  '1. Click on devices to investigate them\n' +
+                  '2. Find vulnerabilities and answer how to fix them\n' +
+                  '3. Correct answers earn points, wrong ones lose points\n\n' +
+                  '📊 SCORING:\n' +
+                  `• Find vulnerability: +${POINTS_PER_VULNERABILITY} pts\n` +
+                  `• Correct fix: +${POINTS_PER_CORRECT_FIX} pts\n` +
+                  `• Click safe device: -${POINTS_LOST_WRONG_CLICK} pts\n` +
+                  `• Wrong fix: -${POINTS_LOST_WRONG_FIX} pts\n\n` +
+                  'When done, click "Finish & Get Grade" to see your final score!');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        updateScoreDisplay();
+    </script>
+</body>
+</html>
